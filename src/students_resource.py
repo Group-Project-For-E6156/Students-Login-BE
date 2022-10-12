@@ -94,3 +94,38 @@ class StudentsResource:
         res = cur.execute(sql, args=(uni, email, token))
         result = cur.rowcount
         return True if result == 1 else False
+
+    @staticmethod
+    def create_profile(uni, timezone, major, gender, msg):
+        sql = """INSERT INTO students_login_db.students_profile(uni, timezone, major, gender, personal_message) 
+            values (%s, %s, %s, %s, %s);"""
+        conn = StudentsResource._get_connection()
+        cur = conn.cursor()
+        res = cur.execute(sql, args=(uni, timezone, major, gender, msg))
+        result = cur.fetchone()
+        return result
+
+    @staticmethod
+    def update_profile_msg(uni, msg):
+        sql = "UPDATE students_login_db.students_profile SET personal_message=%s WHERE uni=%s"
+        conn = StudentsResource._get_connection()
+        cur = conn.cursor()
+        res = cur.execute(sql, args=(msg, uni))
+        return True if cur.rowcount == 1 else False
+
+    @staticmethod
+    def update_profile_timezone(uni, timezone):
+        sql = "UPDATE students_login_db.students_profile SET timezone=%s WHERE uni=%s"
+        conn = StudentsResource._get_connection()
+        cur = conn.cursor()
+        res = cur.execute(sql, args=(timezone, uni))
+        return True if cur.rowcount == 1 else False
+
+    @staticmethod
+    def get_profile(uni):
+        sql = "SELECT * FROM students_login_db.students_profile WHERE uni=%s"
+        conn = StudentsResource._get_connection()
+        cur = conn.cursor()
+        res = cur.execute(sql, args=uni)
+        result = cur.fetchone()
+        return result
