@@ -17,9 +17,7 @@ def get_health():
         "health": "Good",
         "at time": t
     }
-
     result = Response(json.dumps(msg), status=200, content_type="application/json")
-
     return result
 
 @app.route("/students_upload/uni=<uni>&email=<email>&password=<password>&last_name=<last_name>&first_name=<first_name>&middle_name=<middle_name>",
@@ -32,6 +30,7 @@ def insert_student(uni, email, password, last_name, first_name, middle_name):
         rsp = Response("CREATION FAILED", status=404, content_type="text/plain")
 
     return rsp
+
 @app.route("/students/uni=<uni>", methods=["GET"])
 @app.route("/students/email=<email>", methods=["GET"])
 @app.route("/students/uni=<uni>&email=<email>", methods=["GET"])
@@ -44,7 +43,6 @@ def get_student_by_uni(uni="", email=""):
     else:
         rsp = Response("NOT FOUND", status=404, content_type="text/plain")
     return rsp
-
 
 @app.route("/students_verification/uni=<uni>&email=<email>&token=<token>", methods=["GET"])
 def update_student_status(uni, email, token):
