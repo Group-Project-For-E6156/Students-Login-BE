@@ -21,23 +21,28 @@ def get_health():
     return result
 
 
-@app.route("/students_upload/uni=<uni>&email=<email>&password=<password>&last_name=<last_name>&first_name=<first_name>&middle_name=<middle_name>",
+@app.route("/students/upload/uni=<uni>&email=<email>&password=<password>&last_name=<last_name>&first_name=<first_name>&middle_name=<middle_name>",
            methods=["POST", "GET"])
-def insert_student(uni, email, password, last_name, first_name, middle_name):
-    result = StudentsResource.insert_student(uni, email, password, last_name, first_name, middle_name)
-    if result:
-        rsp = Response("STUDENT CREATED", status=200, content_type="text/plain")
+@app.route("/students/upload/uni=<uni>&email=<email>&password=<password>&last_name=<last_name>&first_name=<first_name>",
+           methods=["POST", "GET"])
+def insert_student(uni, email, password, last_name, first_name, middle_name = ""):
+    duplicated = get_student_by_input(uni, email)
+    print(duplicated, duplicated.status_code, duplicated.json)
+    if duplicated.status_code == 200:
+        rsp = Response("DUPLICATED REGISTRATION", status=404, content_type="text/plain")
     else:
-        rsp = Response("CREATION FAILED", status=404, content_type="text/plain")
-
+        result = StudentsResource.insert_student(uni, email, password, last_name, first_name, middle_name)
+        if result:
+            rsp = Response("STUDENT CREATED", status=200, content_type="text/plain")
+        else:
+            rsp = Response("CREATION FAILED", status=404, content_type="text/plain")
     return rsp
 
 
 @app.route("/students/uni=<uni>", methods=["GET"])
 @app.route("/students/email=<email>", methods=["GET"])
 @app.route("/students/uni=<uni>&email=<email>", methods=["GET"])
-@app.route("/students/email=<email>&uni=<uni>", methods=["GET"])
-def get_student_by_uni(uni="", email=""):
+def get_student_by_input(uni="", email=""):
     result = StudentsResource.get_by_uni_email(uni, email)
 
     if result:
@@ -47,7 +52,7 @@ def get_student_by_uni(uni="", email=""):
     return rsp
 
 
-@app.route("/students_verification/uni=<uni>&email=<email>&token=<token>", methods=["GET"])
+@app.route("/students/verification/uni=<uni>&email=<email>&token=<token>", methods=["GET"])
 def update_student_status(uni, email, token):
     is_pending = StudentsResource.student_is_pending(uni, email)
     if not is_pending:
@@ -89,7 +94,7 @@ def update_profile_msg(uni, msg):
 
 
 @app.route("/students/profile/uni=<uni>&timezone=<timezone>")
-def update_profile_msg(uni, timezone):
+def update_profile_timezone(uni, timezone):
     result = StudentsResource.update_profile_timezone(uni, timezone)
     if result:
         rsp = Response("UPDATE TIMEZONE SUCCEED", status=200, content_type="text/plain")
@@ -99,7 +104,7 @@ def update_profile_msg(uni, timezone):
     return rsp
 
 
-@app.route("students/profile/uni=<uni>")
+@app.route("/students/profile/uni=<uni>")
 def get_profile_by_uni(uni):
     result = StudentsResource.get_profile(uni)
     if result:
