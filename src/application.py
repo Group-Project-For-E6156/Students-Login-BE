@@ -21,21 +21,24 @@ def get_health():
     return result
 
 
-@app.route("/students/upload/uni=<uni>&email=<email>&password=<password>&last_name=<last_name>&first_name=<first_name>&middle_name=<middle_name>",
-           methods=["POST", "GET"])
+@app.route(
+    "/students/upload/uni=<uni>&email=<email>&password=<password>&last_name=<last_name>&first_name=<first_name>&middle_name=<middle_name>",
+    methods=["POST", "GET"])
 @app.route("/students/upload/uni=<uni>&email=<email>&password=<password>&last_name=<last_name>&first_name=<first_name>",
            methods=["POST", "GET"])
-def insert_student(uni, email, password, last_name, first_name, middle_name = ""):
+def insert_student(uni, email, password, last_name, first_name, middle_name=""):
     duplicated = get_student_by_input(uni, email)
-    print(duplicated, duplicated.status_code, duplicated.json)
+    print(duplicated, duplicated.status_code, duplicated.data)
     if duplicated.status_code == 200:
-        rsp = Response("DUPLICATED REGISTRATION", status=404, content_type="text/plain")
+        rsp = Response("DUPLICATED REGISTRATION", status=404,
+                       content_type="text/plain")
     else:
         result = StudentsResource.insert_student(uni, email, password, last_name, first_name, middle_name)
         if result:
             rsp = Response("STUDENT CREATED", status=200, content_type="text/plain")
         else:
             rsp = Response("CREATION FAILED", status=404, content_type="text/plain")
+    print(rsp, rsp.data)
     return rsp
 
 
@@ -86,7 +89,7 @@ def create_profile(uni, timezone, major, gender, msg):
 def update_profile_msg(uni, msg):
     result = StudentsResource.update_profile_msg(uni, msg)
     if result:
-        rsp = Response("UPDATE MESSAGE SUCCEED", status=200, content_type="text/plain")
+        rsp = Response("UPDATE MESSAGE SUCCEEDED", status=200, content_type="text/plain")
     else:
         rsp = Response("UPDATE MESSAGE FAILED", status=400, content_type="text/plain")
 
@@ -97,7 +100,7 @@ def update_profile_msg(uni, msg):
 def update_profile_timezone(uni, timezone):
     result = StudentsResource.update_profile_timezone(uni, timezone)
     if result:
-        rsp = Response("UPDATE TIMEZONE SUCCEED", status=200, content_type="text/plain")
+        rsp = Response("UPDATE TIMEZONE SUCCEEDED", status=200, content_type="text/plain")
     else:
         rsp = Response("UPDATE TIMEZONE FAILED", status=400, content_type="text/plain")
 
