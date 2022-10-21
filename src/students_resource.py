@@ -96,30 +96,37 @@ class StudentsResource:
         return True if result == 1 else False
 
     @staticmethod
-    def create_profile(uni, timezone, major, gender, msg):
-        sql = """INSERT INTO students_login_db.students_profile(uni, timezone, major, gender, personal_message) 
-            values (%s, %s, %s, %s, %s);"""
+    def update_profile(uni, timezone, major, gender, msg):
+        if not uni:
+            return False
         conn = StudentsResource._get_connection()
         cur = conn.cursor()
-        res = cur.execute(sql, args=(uni, timezone, major, gender, msg))
-        result = cur.fetchone()
-        return result
+        sql = """INSERT INTO students_login_db.students_profile(uni, timezone, major, gender, personal_message)
+                VALUES (%s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE timezone=%s, major=%s, gender=%s, personal_message=%s"""
+        cur.execute(sql, args=(uni, timezone, major, gender, msg, timezone, major, gender, msg))
 
-    @staticmethod
-    def update_profile_msg(uni, msg):
-        sql = "UPDATE students_login_db.students_profile SET personal_message=%s WHERE uni=%s"
-        conn = StudentsResource._get_connection()
-        cur = conn.cursor()
-        res = cur.execute(sql, args=(msg, uni))
-        return True if cur.rowcount == 1 else False
+        sql_check = "SELECT * FROM students_login_db.students_profile WHERE uni=%s"
+        check_res = cur.execute(sql_check, args=uni)
+        if cur.fetchone():
+            return True
+        else:
+            return False
 
-    @staticmethod
-    def update_profile_timezone(uni, timezone):
-        sql = "UPDATE students_login_db.students_profile SET timezone=%s WHERE uni=%s"
-        conn = StudentsResource._get_connection()
-        cur = conn.cursor()
-        res = cur.execute(sql, args=(timezone, uni))
-        return True if cur.rowcount == 1 else False
+    # @staticmethod
+    # def update_profile_msg(uni, msg):
+    #     sql = "UPDATE students_login_db.students_profile SET personal_message=%s WHERE uni=%s"
+    #     conn = StudentsResource._get_connection()
+    #     cur = conn.cursor()
+    #     res = cur.execute(sql, args=(msg, uni))
+    #     return True if cur.rowcount == 1 else False
+    #
+    # @staticmethod
+    # def update_profile_timezone(uni, timezone):
+    #     sql = "UPDATE students_login_db.students_profile SET timezone=%s WHERE uni=%s"
+    #     conn = StudentsResource._get_connection()
+    #     cur = conn.cursor()
+    #     res = cur.execute(sql, args=(timezone, uni))
+    #     return True if cur.rowcount == 1 else False
 
     @staticmethod
     def get_profile(uni):

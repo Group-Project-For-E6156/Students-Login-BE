@@ -75,39 +75,40 @@ def update_student_status(uni, email, token):
     return rsp
 
 
-@app.route("/students/profile/uni=<uni>&timezone=<timezone>&major=<major>&gender=<gender>&msg=<msg>")
-def create_profile(uni, timezone, major, gender, msg):
-    result = StudentsResource.create_profile(uni, timezone, major, gender, msg)
+@app.route("/students/profile/uni=<uni>&timezone=<timezone>&major=<major>&gender=<gender>&msg=<msg>", methods=["POST", "GET"])
+@app.route("/students/profile/uni=<uni>&timezone=<timezone>&major=<major>&gender=<gender>", methods=["POST", "GET"])
+def update_profile(uni, timezone, major, gender, msg=""):
+    result = StudentsResource.update_profile(uni, timezone, major, gender, msg)
     if result:
-        rsp = Response("PROFILE CREATED", status=200, content_type="text/plain")
+        rsp = Response("PROFILE UPDATED", status=200, content_type="text/plain")
     else:
         rsp = Response("NOT FOUND", status=400, content_type="text/plain")
     return rsp
 
 
-@app.route("/students/profile/uni=<uni>&msg=<msg>")
-def update_profile_msg(uni, msg):
-    result = StudentsResource.update_profile_msg(uni, msg)
-    if result:
-        rsp = Response("UPDATE MESSAGE SUCCEEDED", status=200, content_type="text/plain")
-    else:
-        rsp = Response("UPDATE MESSAGE FAILED", status=400, content_type="text/plain")
-
-    return rsp
-
-
-@app.route("/students/profile/uni=<uni>&timezone=<timezone>")
-def update_profile_timezone(uni, timezone):
-    result = StudentsResource.update_profile_timezone(uni, timezone)
-    if result:
-        rsp = Response("UPDATE TIMEZONE SUCCEEDED", status=200, content_type="text/plain")
-    else:
-        rsp = Response("UPDATE TIMEZONE FAILED", status=400, content_type="text/plain")
-
-    return rsp
+# @app.route("/students/profile/uni=<uni>&msg=<msg>", methods=["GET"])
+# def update_profile_msg(uni, msg):
+#     result = StudentsResource.update_profile_msg(uni, msg)
+#     if result:
+#         rsp = Response("UPDATE MESSAGE SUCCEEDED", status=200, content_type="text/plain")
+#     else:
+#         rsp = Response("UPDATE MESSAGE FAILED", status=400, content_type="text/plain")
+#
+#     return rsp
 
 
-@app.route("/students/profile/uni=<uni>")
+# @app.route("/students/profile/uni=<uni>&timezone=<timezone>", methods=["GET"])
+# def update_profile_timezone(uni, timezone):
+#     result = StudentsResource.update_profile_timezone(uni, timezone)
+#     if result:
+#         rsp = Response("UPDATE TIMEZONE SUCCEEDED", status=200, content_type="text/plain")
+#     else:
+#         rsp = Response("UPDATE TIMEZONE FAILED", status=400, content_type="text/plain")
+#
+#     return rsp
+
+
+@app.route("/students/profile/uni=<uni>", methods=["GET"])
 def get_profile_by_uni(uni):
     result = StudentsResource.get_profile(uni)
     if result:
