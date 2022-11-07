@@ -1,3 +1,4 @@
+import flask
 from flask import Flask, Response, request
 from datetime import datetime
 from students_resource import StudentsResource
@@ -21,31 +22,53 @@ def get_health():
     return result
 
 
-@app.route(
-    "/students/upload/uni=<uni>&email=<email>&password=<password>&last_name=<last_name>&first_name=<first_name>&middle_name=<middle_name>",
-    methods=["POST", "GET"])
-@app.route("/students/upload/uni=<uni>&email=<email>&password=<password>&last_name=<last_name>&first_name=<first_name>",
-           methods=["POST", "GET"])
-def insert_student(uni, email, password, last_name, first_name, middle_name=""):
-    duplicated = get_student_by_input(uni, email)
-    print(duplicated, duplicated.status_code, duplicated.data)
+@app.route("/students/signup", methods=['POST'])
+def query_example():
+    if request.is_json:
+        try:
+            request_data = request.get_json()
+        except ValueError:
+            return Response("[SIGNUP] UNABLE TO RETRIEVE REQUEST", status=400, content_type="text/plain")
+    else:
+        return Response("[SIGNUP] INVALID POST FORMAT: SHOULD BE JSON", status=400, content_type="text/plain")
+
+    if not request_data:
+        rsp = Response("[SIGNUP] INVALID INPUT FOR SIGNUP SHEET", status=404, content_type="text/plain")
+        return rsp
+    inputs = ['uni', 'email', 'password', 'last_name', 'first_name']
+    for element in inputs:
+        if element not in request_data:
+            rsp = Response(f"[SIGNUP] MISSING INPUT {element.upper()}", status=404, content_type="text/plain")
+            return rsp
+
+    user = request_data['uni']
+    email = request_data['email']
+    password = request_data['password']
+    last_name = request_data['last_name']
+    first_name = request_data['first_name']
+    middle_name = None
+    if 'middle_name' in request_data:
+        middle_name = request_data['middle_name']
+
+    duplicated = get_student_by_input(user, email)
     if duplicated.status_code == 200:
-        rsp = Response("DUPLICATED REGISTRATION", status=404,
+        rsp = Response("[SIGNUP] DUPLICATED REGISTRATION", status=404,
                        content_type="text/plain")
     else:
-        result = StudentsResource.insert_student(uni, email, password, last_name, first_name, middle_name)
+        result = StudentsResource.insert_student(user, email, password, last_name, first_name, middle_name)
         if result:
-            rsp = Response("STUDENT CREATED", status=200, content_type="text/plain")
+            rsp = Response("[SIGNUP] STUDENT CREATED", status=200, content_type="text/plain")
         else:
-            rsp = Response("CREATION FAILED", status=404, content_type="text/plain")
-    print(rsp, rsp.data)
+            rsp = Response("[SIGNUP] SIGNUP FAILED", status=404, content_type="text/plain")
     return rsp
 
 
-@app.route("/students/uni=<uni>", methods=["GET"])
-@app.route("/students/email=<email>", methods=["GET"])
-@app.route("/students/uni=<uni>&email=<email>", methods=["GET"])
+@app.route("/students/account", methods=["GET"])
 def get_student_by_input(uni="", email=""):
+    if "uni" in request.args:
+        uni = request.args["uni"]
+    if "email" in request.args:
+        email = request.args["email"]
     result = StudentsResource.get_by_uni_email(uni, email)
 
     if result:
@@ -55,27 +78,35 @@ def get_student_by_input(uni="", email=""):
     return rsp
 
 
-@app.route("/students/verification/uni=<uni>&email=<email>&token=<token>", methods=["GET"])
-def update_student_status(uni, email, token):
+@app.route("/students/verification", methods=["GET"])
+def update_student_status(uni="", email="", token=""):
+    if "uni" in request.args:
+        uni = request.args['uni']
+    if 'email' in request.args:
+        email = request.args['email']
+    if 'token' in request.args:
+        token = request.args['token']
+
     is_pending = StudentsResource.student_is_pending(uni, email)
     if not is_pending:
-        return Response("VERIFICATION FAILED: STUDENT IS NOT PENDING VERIFICATION", status=200,
+        return Response("[ACCOUNT VERIFICATION] VERIFICATION FAILED: STUDENT IS NOT PENDING VERIFICATION", status=404,
                         content_type="text/plain")
 
     correct_inputs = StudentsResource.verify_student_inputs(uni, email, token)
     if not correct_inputs:
-        return Response("VERIFICATION FAILED: WRONG TOKEN GIVEN", status=200,
+        return Response("[ACCOUNT VERIFICATION] VERIFICATION FAILED: WRONG TOKEN GIVEN", status=404,
                         content_type="text/plain")
 
     verified = StudentsResource.update_student_status(uni, email, token)
     if verified:
-        rsp = Response("STUDENT VERIFIED", status=200, content_type="text/plain")
+        rsp = Response("[ACCOUNT VERIFICATION] STUDENT VERIFIED", status=200, content_type="text/plain")
     else:
-        rsp = Response("VERIFICATION FAILED", status=404, content_type="text/plain")
+        rsp = Response("[ACCOUNT VERIFICATION] VERIFICATION FAILED", status=404, content_type="text/plain")
     return rsp
 
 
-@app.route("/students/profile/<uni>/timezone=<timezone>&major=<major>&gender=<gender>&msg=<msg>", methods=["POST", "GET"])
+@app.route("/students/profile/<uni>/timezone=<timezone>&major=<major>&gender=<gender>&msg=<msg>",
+           methods=["POST", "GET"])
 @app.route("/students/profile/<uni>/timezone=<timezone>&major=<major>&gender=<gender>", methods=["POST", "GET"])
 def update_profile(uni, timezone, major, gender, msg=""):
     result = StudentsResource.update_profile(uni, timezone, major, gender, msg)
