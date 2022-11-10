@@ -112,22 +112,6 @@ class StudentsResource:
         else:
             return False
 
-    # @staticmethod
-    # def update_profile_msg(uni, msg):
-    #     sql = "UPDATE students_login_db.students_profile SET personal_message=%s WHERE uni=%s"
-    #     conn = StudentsResource._get_connection()
-    #     cur = conn.cursor()
-    #     res = cur.execute(sql, args=(msg, uni))
-    #     return True if cur.rowcount == 1 else False
-    #
-    # @staticmethod
-    # def update_profile_timezone(uni, timezone):
-    #     sql = "UPDATE students_login_db.students_profile SET timezone=%s WHERE uni=%s"
-    #     conn = StudentsResource._get_connection()
-    #     cur = conn.cursor()
-    #     res = cur.execute(sql, args=(timezone, uni))
-    #     return True if cur.rowcount == 1 else False
-
     @staticmethod
     def get_profile(uni):
         sql = "SELECT * FROM students_login_db.students_profile WHERE uni=%s"
