@@ -91,6 +91,29 @@ def signup():
     return rsp
 
 
+# @app.route("/students/email", method=["post"])
+# def send_email():
+#     request_data = request.get_json()
+#
+#     inputs = ["email", "first_name", "last_name", "token"]
+#     invalid_inputs = [x.upper() for x in inputs if x not in request_data]
+#     if len(invalid_inputs):
+#         return Response(f"[EMAIL] MISSING FIELD {invalid_inputs}", status=404, content_type="text/plain")
+#
+#     email_address = request_data['email']
+#     first_name = request_data['first_name']
+#     last_name = request_data['last_name']
+#     token = request_data['token']
+#
+#     content = f"<h1>Welcome {first_name} {last_name} to join Team matcher!</h1>" \
+#               "<p>This is a message to confirm that you have successfully created an account!</p>" \
+#               f"<p>You verification token is {token}</p>"
+#     msg = Message(content, sender='rosie.liurx@gmail.com', recipients=[email_address])
+#     msg.body = f"Welcome to join Teammatcher, {first_name}!"
+#     # mail.send(msg)
+#     return Response("[EMAIL] SENT", status=200, content_type="text/plain")
+
+
 @app.route("/students/login", methods=['POST'])
 def login():
     request_data = request.get_json()
