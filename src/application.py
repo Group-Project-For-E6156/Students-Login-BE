@@ -1,14 +1,17 @@
-from flask import Flask, Response, request, jsonify
+from flask import Flask, Response, request, jsonify, url_for, render_template
 from datetime import datetime, timedelta
+
+from src.app.email_sender import send_mail
 from students_resource import StudentsResource
 import json
 from flask_cors import CORS
 import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+from app.token import generate_confirmation_token, confirm_token
 
 # Create the Flask application object.
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates")
 # NEVER HARDCODE YOUR CONFIGURATION IN YOUR CODE
 # TODO: INSTEAD CREATE A .env FILE AND STORE IN IT
 app.config['SECRET_KEY'] = 'longer-secret-is-better'
@@ -86,32 +89,48 @@ def signup():
         result = StudentsResource.insert_student(uni, email, password, last_name, first_name, middle_name)
         if result:
             rsp = Response("[SIGNUP] STUDENT CREATED", status=200, content_type="text/plain")
+            send_confirm_email(uni, email)
+            print("Email Sent")
         else:
             rsp = Response("[SIGNUP] SIGNUP FAILED", status=404, content_type="text/plain")
     return rsp
 
 
-# @app.route("/students/email", method=["post"])
-# def send_email():
-#     request_data = request.get_json()
-#
-#     inputs = ["email", "first_name", "last_name", "token"]
-#     invalid_inputs = [x.upper() for x in inputs if x not in request_data]
-#     if len(invalid_inputs):
-#         return Response(f"[EMAIL] MISSING FIELD {invalid_inputs}", status=404, content_type="text/plain")
-#
-#     email_address = request_data['email']
-#     first_name = request_data['first_name']
-#     last_name = request_data['last_name']
-#     token = request_data['token']
-#
-#     content = f"<h1>Welcome {first_name} {last_name} to join Team matcher!</h1>" \
-#               "<p>This is a message to confirm that you have successfully created an account!</p>" \
-#               f"<p>You verification token is {token}</p>"
-#     msg = Message(content, sender='rosie.liurx@gmail.com', recipients=[email_address])
-#     msg.body = f"Welcome to join Teammatcher, {first_name}!"
-#     # mail.send(msg)
-#     return Response("[EMAIL] SENT", status=200, content_type="text/plain")
+@app.route("/students/resend", methods=["POST"])
+def resend_confirmation():
+    if request.is_json:
+        try:
+            request_data = request.get_json()
+        except ValueError:
+            return Response("[RESEND CONFIRMATION] UNABLE TO RETRIEVE REQUEST", status=400, content_type="text/plain")
+    else:
+        return Response("[RESEND CONFIRMATION] INVALID POST FORMAT: SHOULD BE JSON", status=400,
+                        content_type="text/plain")
+
+    if not request_data:
+        rsp = Response("[RESEND CONFIRMATION] INVALID INPUT FOR SIGNUP SHEET", status=404, content_type="text/plain")
+        return rsp
+
+    inputs = ['uni', 'email']
+    for element in inputs:
+        if element not in request_data:
+            rsp = Response(f"[RESEND CONFIRMATION] MISSING INPUT {element.upper()}", status=404,
+                           content_type="text/plain")
+            return rsp
+
+    uni = request_data['uni']
+    email = request_data['email']
+    send_confirm_email(uni, email)
+    return Response(f"[RESEND CONFIRMATION] EMAIL SENT", status=200, content_type="text/plain")
+
+
+def send_confirm_email(uni, email):
+    token = generate_confirmation_token(email)
+    confirm_url = url_for('confirm_email', token=token, uni=uni, email=email, _external=True)
+    template_path = "activate.html"
+    html = render_template(template_path, confirm_url=confirm_url)
+    subject = "Welcome To Team-matcher!"
+    send_mail(email, subject, html)
 
 
 @app.route("/students/login", methods=['POST'])
@@ -158,31 +177,35 @@ def get_student_by_input(current_user, uni="", email=""):
     return rsp
 
 
-# TODO: do we need verification???
-@app.route("/students/verification", methods=["GET"])
-def update_student_status(uni="", email="", token=""):
-    if "uni" in request.args:
-        uni = request.args['uni']
-    if 'email' in request.args:
-        email = request.args['email']
-    if 'token' in request.args:
-        token = request.args['token']
+@app.route("/students/confirm", methods=["GET"])
+def confirm_email():
+    if "email" not in request.args or "uni" not in request.args or "token" not in request.args:
+        return Response("[ACCOUNT VERIFICATION] INVALID POST FORMAT: MISSING FIELD", status=400,
+                        content_type="text/plain")
 
+    usr_email = request.args['email']
+    uni = request.args['uni']
+    token = request.args['token']
+    try:
+        email = confirm_token(token)
+    except:
+        return Response('[EMAIL VERIFICATION] The confirmation link is invalid or has expired!',
+                        status=404,
+                        content_type="text/plain")
+    if usr_email != email:
+        return Response('[EMAIL VERIFICATION] The confirmation link is invalid: wrong email address!',
+                        status=404,
+                        content_type="text/plain")
     is_pending = StudentsResource.student_is_pending(uni, email)
     if not is_pending:
-        return Response("[ACCOUNT VERIFICATION] VERIFICATION FAILED: STUDENT IS NOT PENDING VERIFICATION", status=404,
+        return Response('[EMAIL VERIFICATION] Account has already been confirmed!',
+                        status=404,
                         content_type="text/plain")
-
-    correct_inputs = StudentsResource.verify_student_inputs(uni, email, token)
-    if not correct_inputs:
-        return Response("[ACCOUNT VERIFICATION] VERIFICATION FAILED: WRONG TOKEN GIVEN", status=404,
-                        content_type="text/plain")
-
-    verified = StudentsResource.update_student_status(uni, email, token)
+    verified = StudentsResource.update_student_status(uni, email)
     if verified:
-        rsp = Response("[ACCOUNT VERIFICATION] STUDENT VERIFIED", status=200, content_type="text/plain")
+        rsp = Response("[EMAIL VERIFICATION] STUDENT VERIFIED", status=200, content_type="text/plain")
     else:
-        rsp = Response("[ACCOUNT VERIFICATION] VERIFICATION FAILED", status=404, content_type="text/plain")
+        rsp = Response("[EMAIL VERIFICATION] VERIFICATION FAILED", status=404, content_type="text/plain")
     return rsp
 
 
