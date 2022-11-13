@@ -30,20 +30,18 @@ class StudentsResource:
         conn = StudentsResource._get_connection()
         cur = conn.cursor()
 
-        # generate a new token
-        token = uuid.uuid4()
         if middle_name == "":
             sql = """
             INSERT INTO students_login_db.students(uni, last_name, first_name, email, password, status) 
             values (%s, %s, %s, %s, %s, %s);
             """
-            cur.execute(sql, args=(uni, last_name, first_name, email, password, token))
+            cur.execute(sql, args=(uni, last_name, first_name, email, password, "Pending"))
         else:
             sql = """
             INSERT INTO students_login_db.students(uni, last_name, first_name, middle_name, email, password, status) 
             values (%s, %s, %s, %s, %s, %s, %s);
             """
-            cur.execute(sql, args=(uni, last_name, first_name, middle_name, email, password, token))
+            cur.execute(sql, args=(uni, last_name, first_name, middle_name, email, password, "Pending"))
         result = cur.rowcount
         return True if result == 1 else False
 

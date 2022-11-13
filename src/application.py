@@ -1,7 +1,7 @@
 from flask import Flask, Response, request, jsonify, url_for, render_template
 from datetime import datetime, timedelta
 
-from src.app.email import send_email
+from src.app.email_sender import send_mail
 from students_resource import StudentsResource
 import json
 from flask_cors import CORS
@@ -89,17 +89,49 @@ def signup():
         result = StudentsResource.insert_student(uni, email, password, last_name, first_name, middle_name)
         if result:
             rsp = Response("[SIGNUP] STUDENT CREATED", status=200, content_type="text/plain")
-            # generate token
-            token = generate_confirmation_token(email)
-            confirm_url = url_for('confirm_email', token=token, _external=True)
-            template_path = "activate.html"
-            html = render_template(template_path, confirm_url=confirm_url)
-            subject = "Please confirm your email"
-            send_email(email, subject, html)
+            send_confirm_email(uni, email)
             print("Email Sent")
         else:
             rsp = Response("[SIGNUP] SIGNUP FAILED", status=404, content_type="text/plain")
     return rsp
+
+
+@app.route("/students/resend", methods=["POST"])
+def resend_confirmation():
+    if request.is_json:
+        try:
+            request_data = request.get_json()
+        except ValueError:
+            return Response("[RESEND CONFIRMATION] UNABLE TO RETRIEVE REQUEST", status=400, content_type="text/plain")
+    else:
+        return Response("[RESEND CONFIRMATION] INVALID POST FORMAT: SHOULD BE JSON", status=400,
+                        content_type="text/plain")
+
+    if not request_data:
+        rsp = Response("[RESEND CONFIRMATION] INVALID INPUT FOR SIGNUP SHEET", status=404, content_type="text/plain")
+        return rsp
+
+    inputs = ['uni', 'email']
+    for element in inputs:
+        if element not in request_data:
+            rsp = Response(f"[RESEND CONFIRMATION] MISSING INPUT {element.upper()}", status=404,
+                           content_type="text/plain")
+            return rsp
+
+    uni = request_data['uni']
+    email = request_data['email']
+    send_confirm_email(uni, email)
+    return Response(f"[RESEND CONFIRMATION] EMAIL SENT", status=200, content_type="text/plain")
+
+
+def send_confirm_email(uni, email):
+    token = generate_confirmation_token(email)
+    confirm_url = url_for('confirm_email', token=token, uni=uni, email=email, _external=True)
+    template_path = "activate.html"
+    html = render_template(template_path, confirm_url=confirm_url)
+    subject = "Welcome To Team-matcher!"
+    send_mail(email, subject, html)
+
 
 @app.route("/students/login", methods=['POST'])
 def login():
@@ -175,6 +207,7 @@ def confirm_email():
     else:
         rsp = Response("[EMAIL VERIFICATION] VERIFICATION FAILED", status=404, content_type="text/plain")
     return rsp
+
 
 @app.route("/students/profile", methods=["POST"])
 @token_required
