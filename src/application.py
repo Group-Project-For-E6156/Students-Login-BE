@@ -129,7 +129,7 @@ def resend_confirmation():
         rsp = Response("[RESEND CONFIRMATION] INVALID INPUT FOR SIGNUP SHEET", status=404, content_type="text/plain")
         return rsp
 
-    inputs = ['uni', 'email']
+    inputs = ['uni', 'password']
     for element in inputs:
         if element not in request_data:
             rsp = Response(f"[RESEND CONFIRMATION] MISSING INPUT {element.upper()}", status=404,
@@ -137,9 +137,15 @@ def resend_confirmation():
             return rsp
 
     uni = request_data['uni']
-    email = request_data['email']
+    password = request_data['password']
+    user = StudentsResource.get_by_uni_email(uni=uni)
+    if not user:
+        return Response(f"[RESEND CONFIRMATION] THIS UNI DOES NOT EXIST!", status=404, content_type="text/plain")
+    elif not check_password_hash(user.get('password'), password):
+        return Response(f"[RESEND CONFIRMATION] WRONG PASSWORD!", status=404, content_type="text/plain")
+    email = user.get('email')
     send_confirm_email(uni, email)
-    return Response(f"[RESEND CONFIRMATION] EMAIL SENT", status=200, content_type="text/plain")
+    return Response(f"[RESEND CONFIRMATION] EMAIL HAS BEEN RE-SENT!", status=200, content_type="text/plain")
 
 
 def send_confirm_email(uni, email):
@@ -187,6 +193,9 @@ def logInWithGoogle():
             return Response("[GOOGLE LOGIN] EMAIL VERIFICATION FAILED", status=404, content_type="text/plain")
     else:
         uni = user['uni']
+        if user['status'] == 'Pending':
+            # update student_status if they exist but not verified
+            StudentsResource.update_student_status(uni, email)
 
     exp = datetime.utcnow() + timedelta(minutes=30)
     token = jwt.encode({
@@ -211,22 +220,22 @@ def login():
     if not user:
         return Response("[LOGIN] LOGIN FAILED: USER DOES NOT EXIST", status=404, content_type="text/plain")
 
+    if not check_password_hash(user.get('password'), password):
+        return Response("[LOGIN] LOGIN FAILED: WRONG PASSWORD", status=401, content_type="text/plain")
+
     is_pending = StudentsResource.student_is_pending(uni)
     if is_pending:
-        return Response("[LOGIN] User email not verified", status=400, content_type="text/plain")
+        return Response("[LOGIN] USER ACCOUNT NOT VERIFIED", status=400, content_type="text/plain")
 
-    if check_password_hash(user.get('password'), password):
-        # verify uni and pwd, if valid, generate jwt token
-        exp = datetime.utcnow() + timedelta(minutes=30)
-        token = jwt.encode({
-            'uni': user.get('uni'),
-            'email': user.get('email'),
-            'exp': exp
-        }, app.config['SECRET_KEY'],
-            algorithm="HS256")
-        return Response(json.dumps({'token': token, 'uni': uni}), status=200, content_type="application.json")
-    else:
-        return Response("[LOGIN] LOGIN FAILED: WRONG PASSWORD", status=401, content_type="text/plain")
+    # For this step, verify uni and pwd successfully and not pending, generate jwt token
+    exp = datetime.utcnow() + timedelta(minutes=30)
+    token = jwt.encode({
+        'uni': user.get('uni'),
+        'email': user.get('email'),
+        'exp': exp
+    }, app.config['SECRET_KEY'],
+        algorithm="HS256")
+    return Response(json.dumps({'token': token, 'uni': uni}), status=200, content_type="application.json")
 
 
 @app.route("/students/account", methods=["POST"])
