@@ -107,7 +107,7 @@ def signup():
         result = StudentsResource.insert_student(uni, email, password, last_name, first_name, middle_name)
         if result:
             rsp = Response("[SIGNUP] STUDENT CREATED", status=200, content_type="text/plain")
-            send_confirm_email(uni, email)
+            send_confirm_email(uni, email, "activate.html")
             print("Email Sent")
         else:
             rsp = Response("[SIGNUP] SIGNUP FAILED", status=404, content_type="text/plain")
@@ -144,14 +144,13 @@ def resend_confirmation():
     elif not check_password_hash(user.get('password'), password):
         return Response(f"[RESEND CONFIRMATION] WRONG PASSWORD!", status=404, content_type="text/plain")
     email = user.get('email')
-    send_confirm_email(uni, email)
+    send_confirm_email(uni, email, "activate.html")
     return Response(f"[RESEND CONFIRMATION] EMAIL HAS BEEN RE-SENT!", status=200, content_type="text/plain")
 
 
-def send_confirm_email(uni, email):
+def send_confirm_email(uni, email, template_path):
     token = generate_confirmation_token(email)
     confirm_url = url_for('confirm_email', token=token, uni=uni, email=email, _external=True)
-    template_path = "activate.html"
     html = render_template(template_path, confirm_url=confirm_url)
     subject = "Welcome To Team-matcher!"
     send_mail(email, subject, html)
@@ -269,6 +268,7 @@ def update_account_info(curr_user):
 
     password = generate_password_hash(request_data['password'])
     result = StudentsResource.update_account(uni, email, password)
+    send_confirm_email(uni, email, "welcome.html")
     if result:
         rsp = Response("[UPDATE ACCOUNT] STUDENT ACCOUNT UPDATED", status=200, content_type="text/plain")
     else:
