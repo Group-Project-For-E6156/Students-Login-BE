@@ -45,21 +45,52 @@ class StudentsResource:
         result = cur.rowcount
         return True if result == 1 else False
 
+    def update_account(uni, email, password):
+        if not uni:
+            return False
+        conn = StudentsResource._get_connection()
+        cur = conn.cursor()
+        sql = """UPDATE students_login_db.students SET uni=%s, password=%s WHERE email=%s"""
+        cur.execute(sql, args=(uni, password, email))
+
+        sql_check = "SELECT * FROM students_login_db.students WHERE uni=%s"
+        check_res = cur.execute(sql_check, args=uni)
+        if cur.fetchone():
+            return True
+        else:
+            return False
+
     @staticmethod
     def get_by_uni_email(uni="", email=""):
         # check if uni and email are both empty
         if uni == "" and email == "":
             return None
-        sql = "SELECT * FROM students_login_db.students WHERE uni=%s or email=%s"
         conn = StudentsResource._get_connection()
         cur = conn.cursor()
-        res = cur.execute(sql, args=(uni, email))
+        if email == "" and uni != "N/A":
+            sql = "SELECT * FROM students_login_db.students WHERE uni=%s"
+            res = cur.execute(sql, args=uni)
+        else:
+            sql = "SELECT * FROM students_login_db.students WHERE email=%s"
+            res = cur.execute(sql, args=email)
         result = cur.fetchone()
 
         return result
 
     @staticmethod
-    def student_is_pending(uni, email):
+    def delete_by_email(email):
+        conn = StudentsResource._get_connection()
+        cur = conn.cursor()
+        sql = "DELETE FROM students_login_db.students WHERE email=%s"
+        res = cur.execute(sql, args=email)
+        if cur.rowcount == 1:
+            return True
+        else:
+            # Nothing deleted
+            return False
+
+    @staticmethod
+    def student_is_pending(uni, email=""):
         # check if uni and email are correct and student is in pending status
         if not uni or not email:
             return False

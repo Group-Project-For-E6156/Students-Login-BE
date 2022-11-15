@@ -1,17 +1,34 @@
-from flask import Flask, Response, request, jsonify, url_for, render_template
+from flask import Flask, Response, request, url_for, render_template
 from datetime import datetime, timedelta
-
 from src.app.email_sender import send_mail
 from students_resource import StudentsResource
 import json
 from flask_cors import CORS
 import jwt
+import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from app.token import generate_confirmation_token, confirm_token
+from google.oauth2 import id_token
+from pip._vendor import cachecontrol
+import google.auth.transport.requests
+import requests
+
+secrets_file = "google_client_secret.json"
+with open(secrets_file, "r") as file:
+    secrets = json.load(file)
+
+    GOOGLE_CLIENT_ID = secrets['web']['client_id']
+    GOOGLE_CLIENT_SECRET = secrets['web']['client_secret']
+    GOOGLE_DISCOVERY_URL = (
+        "https://accounts.google.com/.well-known/openid-configuration"
+    )
 
 # Create the Flask application object.
 app = Flask(__name__, template_folder="templates")
+
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
 # NEVER HARDCODE YOUR CONFIGURATION IN YOUR CODE
 # TODO: INSTEAD CREATE A .env FILE AND STORE IN IT
 app.config['SECRET_KEY'] = 'longer-secret-is-better'
@@ -23,7 +40,7 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-        # jwt is passed in the request header!!
+        # check jwt is passed in the request header
         if 'access-token' in request.headers:
             token = request.headers['access-token']
         if not token:
@@ -32,11 +49,12 @@ def token_required(f):
         try:
             # decoding the payload to fetch the stored details
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
-            current_user = StudentsResource.get_by_uni_email(data['uni'])
+            curr_user = StudentsResource.get_by_uni_email(data['uni'], data['email'])
+            print("current user is: " + str(curr_user))
         except:
             return Response("TOKEN IS INVALID", status=401, content_type="text/plain")
         # returns the current logged-in users contex to the routes
-        return f(current_user, *args, **kwargs)
+        return f(curr_user, *args, **kwargs)
 
     return decorated
 
@@ -133,6 +151,54 @@ def send_confirm_email(uni, email):
     send_mail(email, subject, html)
 
 
+@app.route("/students/loginwithgoogle", methods=['GET', 'POST'])
+def logInWithGoogle():
+    credentials = json.loads(request.data)["credentials"]
+    print("credential is " + credentials)
+
+    request_session = requests.session()
+    cached_session = cachecontrol.CacheControl(request_session)
+    token_request = google.auth.transport.requests.Request(session=cached_session)
+
+    id_info = id_token.verify_oauth2_token(
+        id_token=credentials,
+        request=token_request,
+        audience=GOOGLE_CLIENT_ID
+    )
+    print(id_info)
+    if id_info.get("email_verified"):
+        last_name = id_info["family_name"]
+        first_name = id_info["given_name"]
+        email = id_info["email"]
+        picture = id_info["picture"]
+        # uni = email.split("@")[0]
+        uni = "N/A"
+    else:
+        return Response("[GOOGLE LOGIN] User email not available or not verified by Google",
+                        status=400, content_type="text/plain")
+
+    user = StudentsResource.get_by_uni_email(email=email)
+    if not user:
+        result = StudentsResource.insert_student(uni, email, "", last_name, first_name, None)
+        if not result:
+            return Response("[GOOGLE LOGIN] USER SIGNUP FAILED", status=404, content_type="text/plain")
+        verified = StudentsResource.update_student_status(uni, email)
+        if not verified:
+            return Response("[GOOGLE LOGIN] EMAIL VERIFICATION FAILED", status=404, content_type="text/plain")
+    else:
+        uni = user['uni']
+
+    exp = datetime.utcnow() + timedelta(minutes=30)
+    token = jwt.encode({
+        'uni': uni,
+        'email': email,
+        'exp': exp
+    }, app.config['SECRET_KEY'],
+        algorithm="HS256")
+    return Response(json.dumps({'token': token, 'uni': uni, 'email': email, 'picture': picture}),
+                    status=200, content_type="application.json")
+
+
 @app.route("/students/login", methods=['POST'])
 def login():
     request_data = request.get_json()
@@ -140,17 +206,21 @@ def login():
         return Response("[LOGIN] LOGIN FAILED: MISSING UNI OR PASSWORD", status=400, content_type="text/plain")
     uni = request_data['uni']
     password = request_data['password']
-    # if not auth or not auth.get('uni') or not auth.get('password'):
 
     user = StudentsResource.get_by_uni_email(uni)
     if not user:
         return Response("[LOGIN] LOGIN FAILED: USER DOES NOT EXIST", status=404, content_type="text/plain")
+
+    is_pending = StudentsResource.student_is_pending(uni)
+    if is_pending:
+        return Response("[LOGIN] User email not verified", status=400, content_type="text/plain")
 
     if check_password_hash(user.get('password'), password):
         # verify uni and pwd, if valid, generate jwt token
         exp = datetime.utcnow() + timedelta(minutes=30)
         token = jwt.encode({
             'uni': user.get('uni'),
+            'email': user.get('email'),
             'exp': exp
         }, app.config['SECRET_KEY'],
             algorithm="HS256")
@@ -159,11 +229,47 @@ def login():
         return Response("[LOGIN] LOGIN FAILED: WRONG PASSWORD", status=401, content_type="text/plain")
 
 
+@app.route("/students/account", methods=["POST"])
+@token_required
+def update_account_info(curr_user):
+    if request.is_json:
+        try:
+            request_data = request.get_json()
+        except ValueError:
+            return Response("[UPDATE ACCOUNT] UNABLE TO RETRIEVE REQUEST", status=400, content_type="text/plain")
+    else:
+        return Response("[UPDATE ACCOUNT] INVALID POST FORMAT: SHOULD BE JSON", status=400, content_type="text/plain")
+
+    if not request_data:
+        rsp = Response("[UPDATE ACCOUNT] INVALID INPUT", status=404, content_type="text/plain")
+        return rsp
+    inputs = ['uni', 'password']
+    for element in inputs:
+        if element not in request_data:
+            return Response(f"[UPDATE ACCOUNT] MISSING INPUT {element.upper()}", status=404, content_type="text/plain")
+
+    email = curr_user['email']
+    uni = request_data['uni']
+    user_with_uni = StudentsResource.get_by_uni_email(uni=uni, email="")
+    if user_with_uni:
+        # Detect user with same uni but different email address
+        StudentsResource.delete_by_email(email)
+        original_email = user_with_uni['email']
+        return Response(f"[UPDATE ACCOUNT] USER UNI {uni} ALREADY EXISTS, PLEASE LOG IN with {original_email}",
+                        status=404, content_type="text/plain")
+
+    password = generate_password_hash(request_data['password'])
+    result = StudentsResource.update_account(uni, email, password)
+    if result:
+        rsp = Response("[UPDATE ACCOUNT] STUDENT ACCOUNT UPDATED", status=200, content_type="text/plain")
+    else:
+        rsp = Response("[UPDATE ACCOUNT] ACCOUNT UPDATE FAILED", status=404, content_type="text/plain")
+    return rsp
+
+
 @app.route("/students/account", methods=["GET"])
 @token_required
-def get_student_by_input(current_user, uni="", email=""):
-    print("current user is: " + str(current_user))
-    print(uni)
+def get_student_by_input(curr_user, uni="", email=""):
     if "uni" in request.args:
         uni = request.args["uni"]
     if "email" in request.args:
@@ -211,8 +317,8 @@ def confirm_email():
 
 @app.route("/students/profile", methods=["POST"])
 @token_required
-def update_profile(current_user):
-    uni = current_user['uni']
+def update_profile(curr_user):
+    uni = curr_user['uni']
     if request.is_json:
         try:
             request_data = request.get_json()
@@ -246,8 +352,8 @@ def update_profile(current_user):
 
 @app.route("/students/profile", methods=["GET"])
 @token_required
-def get_profile_by_uni(current_user):
-    uni = current_user['uni']
+def get_profile_by_uni(curr_user):
+    uni = curr_user['uni']
     result = StudentsResource.get_profile(uni)
     if result:
         rsp = Response(json.dumps(result), status=200, content_type="application.json")
@@ -258,3 +364,4 @@ def get_profile_by_uni(current_user):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=2333)
+    # app.run(ssl_context="adhoc")
