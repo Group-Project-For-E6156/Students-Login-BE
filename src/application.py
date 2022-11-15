@@ -15,6 +15,7 @@ import google.auth.transport.requests
 import requests
 
 secrets_file = "google_client_secret.json"
+mailjet_secret_file = "mailjet_client_secret.json"
 with open(secrets_file, "r") as file:
     secrets = json.load(file)
 

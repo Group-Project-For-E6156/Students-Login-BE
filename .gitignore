@@ -11,6 +11,7 @@ bin-release/
 src/__pycache__/
 src/app/__pycache__/
 src/google_client_secret.json
+src/mailjet_client_secret.json
 
 # Executables
 *.swf
