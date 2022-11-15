@@ -1,6 +1,6 @@
 from flask import Flask, Response, request, url_for, render_template
 from datetime import datetime, timedelta
-from src.app.email_sender import send_mail
+from src.app.email_sender import send_email_api
 from students_resource import StudentsResource
 import json
 from flask_cors import CORS
@@ -15,7 +15,6 @@ import google.auth.transport.requests
 import requests
 
 secrets_file = "google_client_secret.json"
-mailjet_secret_file = "mailjet_client_secret.json"
 with open(secrets_file, "r") as file:
     secrets = json.load(file)
 
@@ -144,21 +143,24 @@ def resend_confirmation():
         return Response(f"[RESEND CONFIRMATION] THIS UNI DOES NOT EXIST!", status=404, content_type="text/plain")
     elif not check_password_hash(user.get('password'), password):
         return Response(f"[RESEND CONFIRMATION] WRONG PASSWORD!", status=404, content_type="text/plain")
+    elif user.get('status') == 'Verified':
+        return Response(f"[RESEND CONFIRMATION] EMAIL HAS BEEN VERIFIED!", status=404, content_type="text/plain")
     email = user.get('email')
     send_confirm_email(uni, email, "activate.html")
     return Response(f"[RESEND CONFIRMATION] EMAIL HAS BEEN RE-SENT!", status=200, content_type="text/plain")
 
 
-def send_confirm_email(uni, email, template_path):
+def send_confirm_email(uni, email, template_path, first_name=""):
     token = generate_confirmation_token(email)
     confirm_url = url_for('confirm_email', token=token, uni=uni, email=email, _external=True)
     html = render_template(template_path, confirm_url=confirm_url)
     subject = "Welcome To Team-matcher!"
-    send_mail(email, subject, html)
+    # send_mail(email, subject, html)
+    send_email_api(email, first_name, subject, html)
 
 
 @app.route("/students/loginwithgoogle", methods=['GET', 'POST'])
-def logInWithGoogle():
+def login_with_google():
     credentials = json.loads(request.data)["credentials"]
     print("credential is " + credentials)
 
