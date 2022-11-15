@@ -90,14 +90,14 @@ class StudentsResource:
             return False
 
     @staticmethod
-    def student_is_pending(uni, email=""):
+    def student_is_pending(uni):
         # check if uni and email are correct and student is in pending status
-        if not uni or not email:
+        if not uni:
             return False
-        sql = "SELECT status FROM students_login_db.students WHERE uni=%s or email = %s"
+        sql = "SELECT status FROM students_login_db.students WHERE uni=%s"
         conn = StudentsResource._get_connection()
         cur = conn.cursor()
-        res = cur.execute(sql, args=(uni, email))
+        res = cur.execute(sql, args=uni)
         result = cur.fetchone()
         return True if result['status'] != 'Verified' else False
 

@@ -302,7 +302,7 @@ def confirm_email():
         return Response('[EMAIL VERIFICATION] The confirmation link is invalid: wrong email address!',
                         status=404,
                         content_type="text/plain")
-    is_pending = StudentsResource.student_is_pending(uni, email)
+    is_pending = StudentsResource.student_is_pending(uni)
     if not is_pending:
         return Response('[EMAIL VERIFICATION] Account has already been confirmed!',
                         status=404,
