@@ -35,30 +35,6 @@ app.config['SECRET_KEY'] = 'longer-secret-is-better'
 CORS(app)
 
 
-# decorator for verifying the JWT
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        # check jwt is passed in the request header
-        if 'access-token' in request.headers:
-            token = request.headers['access-token']
-        if not token:
-            return Response("TOKEN IS MISSING", status=401, content_type="text/plain")
-
-        try:
-            # decoding the payload to fetch the stored details
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
-            curr_user = StudentsResource.get_by_uni_email(data['uni'], data['email'])
-            print("current user is: " + str(curr_user))
-        except:
-            return Response("TOKEN IS INVALID", status=401, content_type="text/plain")
-        # returns the current logged-in users contex to the routes
-        return f(curr_user, *args, **kwargs)
-
-    return decorated
-
-
 @app.get("/api/health")
 def get_health():
     t = str(datetime.now())
@@ -241,8 +217,7 @@ def login():
 
 
 @app.route("/students/account", methods=["POST"])
-@token_required
-def update_account_info(curr_user):
+def update_account_info(email):
     if request.is_json:
         try:
             request_data = request.get_json()
@@ -259,7 +234,7 @@ def update_account_info(curr_user):
         if element not in request_data:
             return Response(f"[UPDATE ACCOUNT] MISSING INPUT {element.upper()}", status=404, content_type="text/plain")
 
-    email = curr_user['email']
+    #email = curr_user['email']
     uni = request_data['uni']
     user_with_uni = StudentsResource.get_by_uni_email(uni=uni, email="")
     if user_with_uni:
@@ -280,8 +255,7 @@ def update_account_info(curr_user):
 
 
 @app.route("/students/account", methods=["GET"])
-@token_required
-def get_student_by_input(curr_user, uni="", email=""):
+def get_student_by_input(uni="", email=""):
     if "uni" in request.args:
         uni = request.args["uni"]
     if "email" in request.args:
@@ -328,9 +302,7 @@ def confirm_email():
 
 
 @app.route("/students/profile", methods=["POST"])
-@token_required
-def update_profile(curr_user):
-    uni = curr_user['uni']
+def update_profile(uni):
     if request.is_json:
         try:
             request_data = request.get_json()
@@ -363,9 +335,7 @@ def update_profile(curr_user):
 
 
 @app.route("/students/profile", methods=["GET"])
-@token_required
-def get_profile_by_uni(curr_user):
-    uni = curr_user['uni']
+def get_profile_by_uni(uni):
     result = StudentsResource.get_profile(uni)
     if result:
         rsp = Response(json.dumps(result), status=200, content_type="application.json")
