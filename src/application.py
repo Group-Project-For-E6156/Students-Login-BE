@@ -34,7 +34,6 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 app.config['SECRET_KEY'] = 'longer-secret-is-better'
 CORS(app)
 
-
 @app.get("/api/health")
 def get_health():
     t = str(datetime.now())
@@ -302,7 +301,7 @@ def confirm_email():
 
 
 @app.route("/students/profile", methods=["POST"])
-def update_profile(uni):
+def update_profile():
     if request.is_json:
         try:
             request_data = request.get_json()
@@ -317,9 +316,8 @@ def update_profile(uni):
     for element in inputs:
         if element not in request_data:
             return Response(f"[UPDATE PROFILE] MISSING INPUT {element.upper()}", status=400, content_type="text/plain")
-
+    uni = request_data['uni']
     user = StudentsResource.get_by_uni_email(uni)
-
     if user:
         message = request_data['message'] if 'message' in request_data else ""
         result = StudentsResource.update_profile(uni, request_data['timezone'], request_data['major'],
@@ -335,7 +333,9 @@ def update_profile(uni):
 
 
 @app.route("/students/profile", methods=["GET"])
-def get_profile_by_uni(uni):
+def get_profile_by_uni():
+    request_data = request.get_json()
+    uni = request_data['uni']
     result = StudentsResource.get_profile(uni)
     if result:
         rsp = Response(json.dumps(result), status=200, content_type="application.json")
@@ -345,5 +345,5 @@ def get_profile_by_uni(uni):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=2333)
+    app.run(host="127.0.0.1", port=2333)
     # app.run(ssl_context="adhoc")
