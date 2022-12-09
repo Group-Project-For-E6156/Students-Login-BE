@@ -24,16 +24,16 @@ with open(secrets_file, "r") as file:
     )
 
 # Create the Flask application object.
-app = Flask(__name__, template_folder="templates")
+application = Flask(__name__, template_folder="templates")
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 # NEVER HARDCODE YOUR CONFIGURATION IN YOUR CODE
 # TODO: INSTEAD CREATE A .env FILE AND STORE IN IT
-app.config['SECRET_KEY'] = 'longer-secret-is-better'
-CORS(app)
+application.config['SECRET_KEY'] = 'longer-secret-is-better'
+CORS(application)
 
-@app.get("/api/health")
+@application.get("/api/health")
 def get_health():
     t = str(datetime.now())
     msg = {
@@ -45,7 +45,7 @@ def get_health():
     return result
 
 
-@app.route("/students/signup", methods=['POST'])
+@application.route("/students/signup", methods=['POST'])
 def signup():
     if request.is_json:
         try:
@@ -88,7 +88,7 @@ def signup():
     return rsp
 
 
-@app.route("/students/resend", methods=["POST"])
+@application.route("/students/resend", methods=["POST"])
 def resend_confirmation():
     if request.is_json:
         try:
@@ -133,7 +133,7 @@ def send_confirm_email(uni, email, template_path, first_name=""):
     send_email_api(email, first_name, subject, html)
 
 
-@app.route("/students/loginwithgoogle", methods=['GET', 'POST'])
+@application.route("/students/loginwithgoogle", methods=['GET', 'POST'])
 def login_with_google():
     credentials = json.loads(request.data)["credentials"]
     print("credential is " + credentials)
@@ -178,13 +178,13 @@ def login_with_google():
         'uni': uni,
         'email': email,
         'exp': exp
-    }, app.config['SECRET_KEY'],
+    }, application.config['SECRET_KEY'],
         algorithm="HS256")
     return Response(json.dumps({'token': token, 'uni': uni, 'email': email, 'picture': picture}),
                     status=200, content_type="application.json")
 
 
-@app.route("/students/login", methods=['POST'])
+@application.route("/students/login", methods=['POST'])
 def login():
     request_data = request.get_json()
     if 'uni' not in request_data or 'password' not in request_data:
@@ -209,12 +209,12 @@ def login():
         'uni': user.get('uni'),
         'email': user.get('email'),
         'exp': exp
-    }, app.config['SECRET_KEY'],
+    }, application.config['SECRET_KEY'],
         algorithm="HS256")
     return Response(json.dumps({'token': token, 'uni': uni}), status=200, content_type="application.json")
 
 
-@app.route("/students/account", methods=["POST"])
+@application.route("/students/account", methods=["POST"])
 def update_account_info(email):
     if request.is_json:
         try:
@@ -252,7 +252,7 @@ def update_account_info(email):
     return rsp
 
 
-@app.route("/students/account", methods=["GET"])
+@application.route("/students/account", methods=["GET"])
 def get_student_by_input(uni="", email=""):
     if "uni" in request.args:
         uni = request.args["uni"]
@@ -267,7 +267,7 @@ def get_student_by_input(uni="", email=""):
     return rsp
 
 
-@app.route("/students/confirm", methods=["GET"])
+@application.route("/students/confirm", methods=["GET"])
 def confirm_email():
     if "email" not in request.args or "uni" not in request.args or "token" not in request.args:
         return Response("[ACCOUNT VERIFICATION] INVALID POST FORMAT: MISSING FIELD", status=400,
@@ -299,7 +299,7 @@ def confirm_email():
     return rsp
 
 
-@app.route("/students/profile", methods=["POST"])
+@application.route("/students/profile", methods=["POST"])
 def update_profile():
     if request.is_json:
         try:
@@ -331,7 +331,7 @@ def update_profile():
     return rsp
 
 
-@app.route("/students/profile", methods=["GET"])
+@application.route("/students/profile", methods=["GET"])
 def get_profile_by_uni():
     request_data = request.get_json()
     uni = request_data['uni']
@@ -344,5 +344,4 @@ def get_profile_by_uni():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=2333)
-    # app.run(ssl_context="adhoc")
+    application.run(host="127.0.0.1", port=8000)
