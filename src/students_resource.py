@@ -10,12 +10,15 @@ class StudentsResource:
 
     @staticmethod
     def _get_connection():
-        user = "admin"
-        password = "1234567890"
-        h = "e6156.coxz1yzswsen.us-east-1.rds.amazonaws.com"
+        # user = "admin"
+        # password = "1234567890"
+        # h = "e6156.coxz1yzswsen.us-east-1.rds.amazonaws.com"
+        usr=os.environ.get("DBUSER")
+        pw = os.environ.get("DBPW")
+        h = os.environ.get("DBHOST")
         conn = pymysql.connect(
-            user = user,
-            password = password,
+            user = usr,
+            password = pw,
             host = h,
             cursorclass=pymysql.cursors.DictCursor,
             autocommit=True
