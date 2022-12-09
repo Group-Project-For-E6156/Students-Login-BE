@@ -1,14 +1,13 @@
 from flask import Flask, Response, request, url_for, render_template
 from datetime import datetime, timedelta
-from src.app.email_sender import send_email_api
+from email_sender import send_email_api
 from students_resource import StudentsResource
 import json
 from flask_cors import CORS
 import jwt
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
-from app.token import generate_confirmation_token, confirm_token
+from util_token import generate_confirmation_token, confirm_token
 from google.oauth2 import id_token
 from pip._vendor import cachecontrol
 import google.auth.transport.requests

@@ -1,9 +1,5 @@
-from email.header import Header
-from email.mime.text import MIMEText
-from smtplib import SMTP_SSL
-import json
 from mailjet_rest import Client
-from src.app.config import BaseConfig
+from src.config import BaseConfig
 
 host_server = BaseConfig.MAIL_SERVER
 # sender_mail = BaseConfig.MAIL_USERNAME
