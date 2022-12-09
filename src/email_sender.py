@@ -1,5 +1,5 @@
 from mailjet_rest import Client
-from src.config import BaseConfig
+from config import BaseConfig
 
 host_server = BaseConfig.MAIL_SERVER
 # sender_mail = BaseConfig.MAIL_USERNAME
