@@ -33,6 +33,11 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 application.config['SECRET_KEY'] = 'longer-secret-is-better'
 CORS(application)
 
+
+@application.route("/", methods = ['GET'])
+def init():
+    return "hello world"
+
 @application.get("/api/health")
 def get_health():
     t = str(datetime.now())
@@ -343,5 +348,5 @@ def get_profile_by_uni():
     return rsp
 
 
-if __name__ == "__main__":
-    application.run(host="127.0.0.1", port=8000)
+
+application.run(host="0.0.0.0", port=8000)
